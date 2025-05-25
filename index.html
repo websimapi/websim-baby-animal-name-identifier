@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baby Animal Name Identifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: #45a049;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .processing {
+            text-align: center;
+            color: #666;
+            font-size: 18px;
+            margin: 20px 0;
+        }
+
+        .error {
+            color: #f44336;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .grid-container {
+            display: none;
+        }
+
+        .word-search-grid {
+            display: none;
+        }
+
+        .search-section {
+            display: none;
+        }
+
+        .found-words {
+            display: none;
+        }
+
+        .results-container {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .extracted-text {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+
+        .animal-pair {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .adult-animal {
+            font-weight: bold;
+            color: #dc3545;
+            font-size: 16px;
+        }
+
+        .baby-animal {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 16px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐾 Baby Animal Name Identifier</h1>
+        
+        <div class="upload-section">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                📷 Upload Image with Animal Names
+            </button>
+            <input type="file" id="fileInput" accept="image/*" capture="environment">
+            <div class="processing" id="processing" style="display: none;">
+                🔄 Processing image... Please wait...
+            </div>
+            <div class="error" id="error" style="display: none;"></div>
+        </div>
+
+        <div class="results-container" id="resultsContainer">
+            <h3>📝 Extracted Text:</h3>
+            <div class="extracted-text" id="extractedText"></div>
+            
+            <h3>🐾 Baby Animal Names:</h3>
+            <div id="babyAnimalNames"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const processing = document.getElementById('processing');
+            const error = document.getElementById('error');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            processing.style.display = 'block';
+            error.style.display = 'none';
+            resultsContainer.style.display = 'none';
+
+            try {
+                // Convert file to data URL
+                const dataUrl = await fileToDataURL(file);
+                
+                // Use LLM to extract text and identify animal names
+                const completion = await websim.chat.completions.create({
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Analyze this image and extract all text. Then identify any animal names in the text and provide their corresponding baby animal names.
+                                    
+                                    Return the results as JSON with this exact format:
+                                    {
+                                        "extractedText": "All the text found in the image",
+                                        "animalNames": [
+                                            {
+                                                "adult": "DOG",
+                                                "baby": "PUPPY"
+                                            },
+                                            {
+                                                "adult": "CAT", 
+                                                "baby": "KITTEN"
+                                            }
+                                        ]
+                                    }
+                                    
+                                    Guidelines:
+                                    - Extract ALL visible text from the image
+                                    - Look for any animal names (mammals, birds, reptiles, etc.)
+                                    - Provide the correct baby animal name for each adult animal found
+                                    - Use uppercase letters for consistency
+                                    - If no animal names are found, return an empty array
+                                    - Include common animals like: dog→puppy, cat→kitten, cow→calf, horse→foal, pig→piglet, sheep→lamb, goat→kid, deer→fawn, bear→cub, lion→cub, tiger→cub, elephant→calf, whale→calf, seal→pup, etc.`
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: { url: dataUrl }
+                                }
+                            ]
+                        }
+                    ],
+                    json: true
+                });
+
+                const result = JSON.parse(completion.content);
+                
+                displayResults(result);
+                processing.style.display = 'none';
+                resultsContainer.style.display = 'block';
+                
+            } catch (err) {
+                console.error('Error processing image:', err);
+                processing.style.display = 'none';
+                error.textContent = 'Error processing image. Please try again with a clearer image.';
+                error.style.display = 'block';
+            }
+        }
+
+        function fileToDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function displayResults(result) {
+            // Display extracted text
+            const extractedTextElement = document.getElementById('extractedText');
+            extractedTextElement.textContent = result.extractedText || 'No text found in the image.';
+            
+            // Display baby animal names
+            const babyAnimalNamesElement = document.getElementById('babyAnimalNames');
+            babyAnimalNamesElement.innerHTML = '';
+            
+            if (result.animalNames && result.animalNames.length > 0) {
+                result.animalNames.forEach(animalPair => {
+                    const animalPairElement = document.createElement('div');
+                    animalPairElement.className = 'animal-pair';
+                    animalPairElement.innerHTML = `
+                        <span class="adult-animal">${animalPair.adult}</span>
+                        <span class="arrow">→</span>
+                        <span class="baby-animal">${animalPair.baby}</span>
+                    `;
+                    babyAnimalNamesElement.appendChild(animalPairElement);
+                });
+            } else {
+                babyAnimalNamesElement.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No animal names detected in the image.</p>';
+            }
+        }
+    </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
